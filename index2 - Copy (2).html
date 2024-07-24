@@ -1,0 +1,1748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Shadow Chess Survival</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #gameContainer {
+            contain: layout size;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        #header, #footer {
+            padding: 10px;
+            background-color: #333;
+            color: white;
+            text-align: center;
+        }
+        #canvasContainer {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+        #gameCanvas {
+            max-width: 100%;
+            max-height: 100%;
+        }
+        #controls {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 10px;
+        }
+        button {
+            padding: 10px;
+            font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #pieceButtons {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 10px;
+        }
+        .pieceButton {
+            padding: 5px 10px;
+            font-size: 14px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .pieceButton:disabled {
+            background-color: #cccccc;
+            color: #666666;
+            cursor: not-allowed;
+        }
+
+        #changeToK {
+            background-color: #3F51B5;
+        }
+
+        #peekButton {
+            background-color: #9C27B0;
+        }
+
+        #peekButton:disabled {
+            background-color: #cccccc;
+            color: #666666;
+            cursor: not-allowed;
+        }
+
+        #potionRecipes {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        #potionRecipes div {
+            background-color: #6e0a96;
+            padding: 5px;
+            border-radius: 5px;
+        }
+
+        #potionButton {
+            padding: 5px 10px;
+            margin: 5px;
+            font-size: 14px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .potionButton:disabled {
+            background-color: #cccccc;
+            color: #666666;
+            cursor: not-allowed;
+        }
+
+        .potionButton-available {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .potionButton:enabled {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .potionButton:enabled:hover {
+            background-color: #6e0a96;
+        }
+
+        .game-over {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            font-size: 16px;
+            text-align: center;
+            max-width: 80%;
+            z-index: 1000;
+        }
+
+        .game-over h2 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .game-over p {
+            margin: 5px 0;
+        }
+
+        .game-over button {
+            margin-top: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .game-over-subheading {
+            font-style: italic;
+            margin-bottom: 15px;
+            color: #ffa500; /* Orange color for emphasis */
+        }
+
+        .game-over button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="header">
+            <H1> Chess I Guess...?</H1>
+            <div id="scoreText">Score: 0</div>
+            <div id="pieceText">Current Piece: King</div>
+            
+            <div id="turnText">Turns: 0</div>
+
+            <div id="ingredientText">Ingredients Collected: 0</div> <!-- New line for ingredient counter -->
+        </div>
+        <div id="canvasContainer">
+            <canvas id="gameCanvas"></canvas>
+        </div>
+        <div id="footer">
+            <div id="controls">
+                <button id="undoButton">Undo</button>
+                <button id="changeToK" class="pieceButton" data-piece="K" data-cost="0">King (0)</button>
+                <button id="toggleDotsButton">Hint</button>
+                <button id="peekButton">Peek (5)</button>
+            </div>
+            <div id="potionRecipes">
+                <div id="knightPotion">Knight Potion: 0 (0 of 2)</div>
+                <div id="rookPotion">Rook Potion: 0 (0 of 3)</div>
+                <div id="bishopPotion">Bishop Potion: 0 (0 of 3)</div>
+                <div id="queenPotion">Queen Potion: 0 (0 of 5)</div>
+            </div>
+            <div id="potionButtons">
+                <button id="useKnightPotion" class="potionButton" disabled>Knight Potion Unavailable</button>
+                <button id="useRookPotion" class="potionButton" disabled>Rook Potion Unavailable</button>
+                <button id="useBishopPotion" class="potionButton" disabled>Bishop Potion Unavailable</button>
+                <button id="useQueenPotion" class="potionButton" disabled>Queen Potion Unavailable</button>
+            </div>
+            <!-- <div id="pieceButtons">
+                
+                <button id="changeToN" class="pieceButton" data-piece="N" data-cost="15">Knight (15)</button>
+                <button id="changeToR" class="pieceButton" data-piece="R" data-cost="17">Rook (17)</button>
+                <button id="changeToB" class="pieceButton" data-piece="B" data-cost="18">Bishop (18)</button>
+                <button id="changeToQ" class="pieceButton" data-piece="Q" data-cost="25">Queen (25)</button>
+            </div> -->
+        </div>
+    </div>
+
+    <script defer>
+        let canvas, ctx;
+        let GAME_SIZE = 800;
+        const ROWS = 8;
+        const COLS = 8;
+        let SQUARE_SIZE = GAME_SIZE / COLS;
+
+        const IMAGES = {};
+        const gameState = {
+            chessBoard: null
+        };
+
+        class Piece {
+            constructor(color, pieceType) {
+                this.color = color;
+                this.pieceType = pieceType;
+                this.image = IMAGES[`${color}${pieceType}`];
+            }
+
+            draw(ctx, row, col) {
+                const x = col * SQUARE_SIZE;
+                const y = row * SQUARE_SIZE;
+                ctx.drawImage(this.image, x, y, SQUARE_SIZE, SQUARE_SIZE);
+            }
+
+            getPossibleMoves(row, col) {
+                switch(this.pieceType) {
+                    case 'K': return this.getKingMoves(row, col);
+                    case 'Q': return this.getQueenMoves(row, col);
+                    case 'R': return this.getRookMoves(row, col);
+                    case 'B': return this.getBishopMoves(row, col);
+                    case 'N': return this.getKnightMoves(row, col);
+                    default: return [];
+                }
+            }
+
+            getKingMoves(row, col) {
+                return [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]]
+                    .map(([r, c]) => [row + r, col + c]);
+            }
+
+            getQueenMoves(row, col) {
+                return [...this.getRookMoves(row, col), ...this.getBishopMoves(row, col)];
+            }
+
+            getRookMoves(row, col) {
+                let moves = [];
+                for (let i = 0; i < ROWS; i++) if (i !== row) moves.push([i, col]);
+                for (let j = 0; j < COLS; j++) if (j !== col) moves.push([row, j]);
+                return moves;
+            }
+
+            getBishopMoves(row, col) {
+                let moves = [];
+                for (let i = 1; i < ROWS; i++) {
+                    if (row + i < ROWS && col + i < COLS) moves.push([row + i, col + i]);
+                    if (row + i < ROWS && col - i >= 0) moves.push([row + i, col - i]);
+                    if (row - i >= 0 && col + i < COLS) moves.push([row - i, col + i]);
+                    if (row - i >= 0 && col - i >= 0) moves.push([row - i, col - i]);
+                }
+                return moves;
+            }
+
+            getKnightMoves(row, col) {
+                return [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]]
+                    .map(([r, c]) => [row + r, col + c]);
+            }
+        }
+
+        class Ingredient {
+            /**
+             * @param {string} name - The name of the chess piece.
+             * @param {string} type - The type of the chess piece. Must be one of: rook/bishop/knight/queen.
+             * @param {string} rarity - The rarity of the chess piece. Must be one of: common/uncommon/rare.
+             */
+            constructor(name, type, rarity = 'common') {
+                this.name = name;
+                this.type = type;
+                this.rarity = rarity;
+            }
+
+            // draw(ctx) {
+            //     const x = (this.col + 0.5) * SQUARE_SIZE;
+            //     const y = (this.row + 0.5) * SQUARE_SIZE;
+
+            //     // Draw a green circle
+            //     ctx.fillStyle = 'green';
+            //     ctx.beginPath();
+            //     ctx.arc(x, y, SQUARE_SIZE / 4, 0, 2 * Math.PI);
+            //     ctx.fill();
+
+            //     // Draw a question mark
+            //     ctx.fillStyle = 'white';
+            //     ctx.font = `${SQUARE_SIZE / 2}px Arial`;
+            //     ctx.textAlign = 'center';
+            //     ctx.textBaseline = 'middle';
+            //     ctx.fillText('?', x, y);
+            // }
+        }
+
+        class PotionRecipe {
+            constructor(name, ingredients, requiredCount) {
+                this.name = name;
+                this.ingredients = ingredients;
+                this.requiredCount = requiredCount;
+                
+            }
+
+            isUnlocked(collectedIngredients) {
+                const uniqueIngredients = new Set(collectedIngredients
+                    .filter(ing => this.ingredients.includes(ing.name))
+                    .map(ing => ing.name));
+                return uniqueIngredients.size >= this.requiredCount;
+            }
+        }
+
+        class Board {
+            constructor() {
+                this.board = Array(ROWS).fill().map(() => Array(COLS).fill(null));
+                this.playerPiece = new Piece('w', 'K');
+                this.board[3][3] = this.playerPiece;
+                this.enemies = [];
+                this.turnCount = 0;
+                this.score = 0;
+                this.selectedPos = [3, 3];
+                this.attackingForce = [];
+                this.mainAttacker = null;
+                this.lastSpawned = null;
+                this.lastMovedEnemyFrom = null;
+                this.lastMovedEnemyTo = null;
+                this.lastPlayerPosition = null;
+                this.emergencyMove = false;
+                this.showDots = false;
+                this.lastPieceChange = null;
+                this.pendingPieceChange = null;
+                this.pieceChangeCost = {'K': 0, 'N': 15, 'B': 18, 'R': 17, 'Q': 25};
+                this.previousState = null;
+                this.canUndo = false;
+                this.lastPieceCost = 0;
+                this.lastMoveScoreGain = 0;
+                this.popUpTexts = [];
+                // this.updatePieceButtons();
+                this.blackPiecesVisible = false;
+                this.peekActivated = false;
+                this.peekCost = 5;
+                this.updatePeekButton();
+                this.ingredients = [];
+                this.lastIngredientSpawn = -5;
+                this.ingredientsCollected = 0;
+                this.collectedIngredients = [];
+                this.unlockedPotions = new Set();
+                this.justUsedPotion = false;
+                this.lastPrintedTurn = -1;
+                this.potionsUsed = 0;
+                this.emergencyTurnsUsed = 0;
+                this.piecesCaptured = 0;
+                this.recipes = [
+                    new PotionRecipe('Rook Potion', ['Rookie Dough', 'Brookcoli', 'Castlerole', 'Castle oil'], 3),
+                    new PotionRecipe('Bishop Potion', ['Bish-hops', 'Bisqueop', 'Bishchops', 'Priestry', 'Priestrami', 'Pastor'], 3),
+                    new PotionRecipe('Knight Potion', ['KNIGHTmeg', 'HORSEraddish', 'KNIGHTella', 'VegiKNIGHT'], 2),
+                    new PotionRecipe('Queen Potion', ['QUEENwa', 'Ice QUEEN', 'QUEENce', 'QUEEN cuisine', 'Sour queen'], 5)
+                ];
+                this.allIngredients = [
+                    new Ingredient('Rookie Dough', 'rook', 'common'),
+                    new Ingredient('Brookcoli', 'rook', 'common'),
+                    new Ingredient('Castlerole', 'rook', 'uncommon'),
+                    new Ingredient('Castle oil', 'rook', 'rare'),
+                    new Ingredient('Bish-hops', 'bishop', 'common'),
+                    new Ingredient('Bisqueop', 'bishop', 'common'),
+                    new Ingredient('Bishchops', 'bishop', 'uncommon'),
+                    new Ingredient('Priestry', 'bishop', 'uncommon'),
+                    new Ingredient('Priestrami', 'bishop', 'rare'),
+                    new Ingredient('KNIGHTmeg', 'knight', 'common'),
+                    new Ingredient('HORSEraddish', 'knight', 'common'),
+                    new Ingredient('KNIGHTella', 'knight', 'uncommon'),
+                    new Ingredient('VegiKNIGHT', 'knight', 'rare'),
+                    new Ingredient('QUEENwa', 'queen', 'common'),
+                    new Ingredient('Ice QUEEN', 'queen', 'common'),
+                    new Ingredient('QUEENce', 'queen', 'uncommon'),
+                    new Ingredient('QUEEN cuisine', 'queen', 'uncommon'),
+                    new Ingredient('Sour queen', 'queen', 'rare'),
+                    new Ingredient('Pastor', 'bishop', 'common')
+                ];
+
+                this.potionProgress = {
+                    'Rook Potion': new Set(),
+                    'Bishop Potion': new Set(),
+                    'Knight Potion': new Set(),
+                    'Queen Potion': new Set()
+                };
+            }
+
+            getGameStats() {
+                return {
+                    ingredientsCollected: this.ingredientsCollected,
+                    potionsUsed: this.potionsUsed,
+                    emergencyTurnsUsed: this.emergencyTurnsUsed,
+                    piecesCaptured: this.piecesCaptured
+                };
+            }
+
+            usePotion(potionType) {
+                const potionName = potionType + ' Potion';
+                if (this.unlockedPotions.has(potionName)) {
+                    const recipe = this.recipes.find(r => r.name === potionName);
+                    if (recipe) {
+                        // Remove used ingredients
+                        for (let i = 0; i < recipe.requiredCount; i++) {
+                            const ingredientIndex = this.collectedIngredients.findIndex(
+                                ing => recipe.ingredients.includes(ing.name)
+                            );
+                            if (ingredientIndex !== -1) {
+                                this.collectedIngredients.splice(ingredientIndex, 1);
+                            }
+                        }
+                    }
+
+                    this.potionsUsed++;
+
+                    this.unlockedPotions.delete(potionName);
+                    const pieceTypeMap = {
+                        'Rook': 'R',
+                        'Bishop': 'B',
+                        'Knight': 'N',
+                        'Queen': 'Q'
+                    };
+                    const pieceType = pieceTypeMap[potionType];
+                    this.changePlayerPiece(pieceType);
+                    this.popUpTexts.push(new PopUpText(`Changed to ${potionType}!`, [GAME_SIZE / 2, GAME_SIZE / 2], [0, 255, 0], 80));
+
+                    // Reset the progress for this potion
+                    this.potionProgress[potionName].clear();
+
+                    this.updatePotionUI();
+                    this.justUsedPotion = true;
+                } else {
+                    console.log(`${potionName} is not available`);
+                }
+            }
+
+            // changePlayerPiece(pieceType) {
+            //     if (pieceType === this.playerPiece.pieceType) {
+            //         console.log(`Already ${pieceType}, no change needed`);
+            //         return;
+            //     }
+
+            //     this.playerPiece = new Piece('w', pieceType);
+            //     this.board[this.selectedPos[0]][this.selectedPos[1]] = this.playerPiece;
+            //     console.log(`Piece changed to ${pieceType}`);
+            //     this.updatePotionUI();
+            // }
+
+            spawnIngredient() {
+                //console.log(`Attempting to spawn ingredient. Turn: ${this.turnCount}, Last spawn/collection: ${this.lastIngredientSpawn}, Ingredients: ${this.ingredients.length}`);
+
+                // Only spawn if it's been at least 5 turns since the last spawn or collection
+                if (this.ingredients.length < 2 && this.turnCount - this.lastIngredientSpawn >= 5) {
+                    this.forceSpawnIngredient();
+                } // else {
+                    //console.log("Conditions not met for ingredient spawn");
+                //}
+            }
+
+            forceSpawnIngredient() {
+                const emptySquares = [];
+                for (let row = 0; row < ROWS; row++) {
+                    for (let col = 0; col < COLS; col++) {
+                        if (this.board[row][col] === null &&
+                            !this.ingredients.some(ing => ing.row === row && ing.col === col) &&
+                            (row !== this.selectedPos[0] || col !== this.selectedPos[1])) {
+                            emptySquares.push([row, col]);
+                        }
+                    }
+                }
+                if (emptySquares.length > 0) {
+                    const [row, col] = emptySquares[Math.floor(Math.random() * emptySquares.length)];
+                    this.ingredients.push({row, col}); // Just store position, actual ingredient determined on collection
+                    this.lastIngredientSpawn = this.turnCount;
+                    console.log(`Spawned ingredient at [${row}, ${col}]. Total ingredients: ${this.ingredients.length}`);
+                } else {
+                    console.log('No empty squares available for ingredient spawn');
+                }
+            }
+
+            collectIngredient(row, col) {
+                const index = this.ingredients.findIndex(ing => ing.row === row && ing.col === col);
+                if (index !== -1) {
+                    const randomIngredient = this.getRandomIngredient();
+                    this.collectedIngredients.push(randomIngredient);
+                    this.ingredients.splice(index, 1);
+                    this.ingredientsCollected++;
+                    this.popUpTexts.push(new PopUpText(`Collected: ${randomIngredient.name}`, [col * SQUARE_SIZE, row * SQUARE_SIZE], [0, 255, 0], 40));
+                    this.lastIngredientSpawn = this.turnCount;
+                    this.updatePotionProgress(randomIngredient);
+                    this.checkPotionUnlocks();
+                    console.log(`Ingredient collected: ${randomIngredient.name}. Total: ${this.ingredientsCollected}. Next spawn in 5 turns.`);
+                }
+            }
+
+            getRandomIngredient() {
+                return this.allIngredients[Math.floor(Math.random() * this.allIngredients.length)];
+            }
+
+            updatePotionProgress(ingredient) {
+                this.recipes.forEach(recipe => {
+                    if (recipe.ingredients.includes(ingredient.name)) {
+                        this.potionProgress[recipe.name].add(ingredient.name);
+                    }
+                });
+                this.checkPotionUnlocks();
+                this.updatePotionUI();
+            }
+
+            updatePotionUI() {
+                const potionInfo = {
+                    'Rook': { required: 3, unique: this.potionProgress['Rook Potion'].size },
+                    'Bishop': { required: 3, unique: this.potionProgress['Bishop Potion'].size },
+                    'Knight': { required: 2, unique: this.potionProgress['Knight Potion'].size },
+                    'Queen': { required: 5, unique: this.potionProgress['Queen Potion'].size }
+                };
+
+                for (const [potionType, info] of Object.entries(potionInfo)) {
+                    const elementId = potionType.toLowerCase() + 'Potion';
+                    const element = document.getElementById(elementId);
+                    if (element) {
+                        const potionName = potionType + ' Potion';
+                        const availableCount = this.getAvailablePotionCount(potionName);
+                        element.textContent = `${potionName}: ${availableCount} (${info.unique} of ${info.required})`;
+                        element.title = Array.from(this.potionProgress[potionName]).join(', ');
+
+                        // Update potion usage button
+                        const buttonId = 'use' + potionType + 'Potion';
+                        const button = document.getElementById(buttonId);
+                        if (button) {
+                            const isAvailable = availableCount > 0;
+                            button.disabled = !isAvailable;
+                            button.textContent = isAvailable ? `Use ${potionType} Potion (${availableCount})` : `${potionType} Potion Unavailable`;
+                            button.classList.toggle('potionButton-available', isAvailable);
+                        }
+                    }
+                }
+            }
+
+            getAvailablePotionCount(potionName) {
+                const recipe = this.recipes.find(r => r.name === potionName);
+                if (!recipe) return 0;
+                
+                const relevantIngredients = this.collectedIngredients.filter(ing => recipe.ingredients.includes(ing.name));
+                return Math.floor(relevantIngredients.length / recipe.requiredCount);
+            }
+
+            checkPotionUnlocks() {
+                this.recipes.forEach(recipe => {
+                    const availableCount = this.getAvailablePotionCount(recipe.name);
+                    if (availableCount > 0 && !this.unlockedPotions.has(recipe.name)) {
+                        this.unlockedPotions.add(recipe.name);
+                        this.popUpTexts.push(new PopUpText(`${recipe.name} Available`, [GAME_SIZE / 2, GAME_SIZE / 2], [0, 255, 0], 80));
+                        console.log(`${recipe.name} unlocked!`);
+                    }
+                });
+            }
+
+            draw(ctx) {
+                this.drawPieces(ctx);
+                this.drawIngredients(ctx);
+                this.highlightLastSpawned(ctx);
+                this.highlightLastMovedEnemy(ctx);
+                this.highlightPlayer(ctx);
+                if (this.showDots) {
+                    this.drawValidMoves(ctx);
+                }
+            }
+
+            checkPieceAvailability(previousScore, currentScore) {
+                const milestones = [
+                    {score: 25, piece: 'Queen'},
+                    {score: 18, piece: 'Bishop'},
+                    {score: 17, piece: 'Rook'},
+                    {score: 15, piece: 'Knight'}
+                ];
+
+                for (const milestone of milestones) {
+                    if (previousScore < milestone.score && currentScore >= milestone.score) {
+                        return milestone.piece;
+                    }
+                }
+                return null;
+            }
+
+            isWhiteSquare(row, col) {
+                return (row + col) % 2 === 0;
+            }
+
+            // @TODO: this replaces line 397. ???
+            changePlayerPiece(pieceType) {
+                console.log(`Changing player piece to: ${pieceType}`);
+                this.playerPiece = new Piece('w', pieceType);
+                this.board[this.selectedPos[0]][this.selectedPos[1]] = this.playerPiece;
+                console.log(`Piece changed to ${pieceType}`);
+                this.updatePotionUI();
+            }
+
+            updatePieceButtons() {
+                const kingButton = document.getElementById('changeToK');
+                if (kingButton) {
+                    kingButton.disabled = false;
+                }
+                // Disable or enable potion buttons based on availability
+                ['Rook', 'Bishop', 'Knight', 'Queen'].forEach(pieceType => {
+                    const button = document.getElementById(`use${pieceType}Potion`);
+                    if (button) {
+                        button.disabled = !this.unlockedPotions.has(`${pieceType} Potion`);
+                    }
+                });
+            }
+
+            captureEnemyIfPresent(row, col) {
+                if (this.board[row][col] !== null && this.board[row][col].color === 'b') {
+                    const capturedPiece = this.board[row][col];
+                    const points = {'N': 5, 'B': 8, 'R': 7, 'Q': 15, 'p': 1}[capturedPiece.pieceType] || 1;
+                    this.score += points;
+                    this.enemies = this.enemies.filter(enemy => !(enemy[0] === row && enemy[1] === col));
+
+                    const pieceName = {'p': 'Pawn', 'R': 'Rook', 'N': 'Knight', 'B': 'Bishop', 'Q': 'Queen', 'K': 'King'}[capturedPiece.pieceType] || 'Unknown';
+                    const popUpText = `+${points} ${pieceName} Taken`;
+                    this.popUpTexts.push(new PopUpText(popUpText, [col * SQUARE_SIZE, row * SQUARE_SIZE], [255, 215, 0]));
+
+                    // Give appropriate ingredient
+                    this.giveIngredientForCapture(capturedPiece.pieceType);
+
+                    console.log(`Captured ${pieceName} at [${row}, ${col}]`);
+                    this.piecesCaptured++;
+                }
+            }
+
+            giveIngredientForCapture(capturedPieceType) {
+                let ingredient;
+                switch(capturedPieceType) {
+                    case 'R':
+                        ingredient = this.getRandomIngredientOfType('rook');
+                        break;
+                    case 'B':
+                        ingredient = this.getRandomIngredientOfType('bishop');
+                        break;
+                    case 'N':
+                        ingredient = this.getRandomIngredientOfType('knight');
+                        break;
+                    case 'Q':
+                        ingredient = this.getRandomIngredientOfType('queen');
+                        break;
+                    default:
+                        ingredient = this.getRandomIngredient();
+                }
+                this.collectedIngredients.push(ingredient);
+                this.ingredientsCollected++;
+                this.updatePotionProgress(ingredient);
+
+                const PopUpTextPush = new PopUpText(
+                    `Got: ${ingredient.name}`,
+                    [GAME_SIZE / 2, GAME_SIZE / 2],
+                    [0, 255, 0],
+                    80
+                );
+                this.popUpTexts.push(PopUpTextPush);
+                updateGameInfo(this);
+            }
+
+            getRandomIngredientOfType(type) {
+                const ingredientsOfType = this.allIngredients.filter(ing => ing.type === type);
+                return ingredientsOfType[Math.floor(Math.random() * ingredientsOfType.length)];
+            }
+
+            resetEnemyJustSpawnedFlags() {
+                for (const enemy of this.enemies) {
+                    const [row, col] = enemy;
+                    const piece = this.board[row][col];
+                    if (piece) {
+                        piece.justSpawned = false;
+                    }
+                }
+            }
+
+            movePlayer(row, col) {
+                this.popUpTexts = [];
+                this.saveState();
+                const initialScore = this.score;
+                const validMoves = this.getValidMoves(...this.selectedPos);
+                const isValidMove = validMoves.some(move => move[0] === row && move[1] === col);
+
+                if (isValidMove) {
+                    console.log(`Attempting to move to [${row}, ${col}]. Valid move: ${isValidMove}`);
+                    try {
+                        this.executeMove(row, col, initialScore);
+                        
+                        if (this.justUsedPotion) {
+                            this.changePlayerPiece('K');
+                            this.justUsedPotion = false;
+                            this.popUpTexts.push(new PopUpText("Changed back to King", [GAME_SIZE / 2, GAME_SIZE / 2], [0, 255, 0], 80));
+                        }
+                        
+                        return true;
+                    } catch (error) {
+                        console.log(`Error during move: ${error.message}`);
+                        console.error(error);
+                        return false;
+                    }
+                } else {
+                    console.log('Invalid move attempted');
+                }
+                return true;
+            }
+
+            executeMove(row, col, initialScore) {
+                this.captureEnemyIfPresent(row, col);
+                this.movePlayerPiece(row, col);
+                this.handlePendingPieceChange();
+
+                if (!this.emergencyMove) {
+                    this.incrementTurnAndScore();
+                }
+
+                console.log("\nAfter player move:");
+
+                this.printBoardState();
+                this.handlePeekDeactivation();
+                //this.handleNewPieceAvailability(initialScore, row, col);
+                this.collectIngredient(row, col);
+
+                if (this.checkEmergencyMove()) {
+                    return;
+                }
+                if (!this.processEnemyMoves()) {
+                    console.log('Game over: Player captured');
+                    return;
+                }
+
+                console.log("\nAfter enemy moves:");
+                this.printBoardState();
+                this.handleEnemySpawning();
+                this.resetEnemyJustSpawnedFlags();
+                this.updateUI(initialScore);
+            }
+
+            movePlayerPiece(row, col) {
+                this.board[this.selectedPos[0]][this.selectedPos[1]] = null;
+                this.selectedPos = [row, col];
+                this.board[row][col] = this.playerPiece;
+            }
+
+            handlePendingPieceChange() {
+                if (this.pendingPieceChange) {
+                    this.changePlayerPiece(this.pendingPieceChange);
+                    this.pendingPieceChange = null;
+                }
+            }
+
+            incrementTurnAndScore() {
+                ++this.turnCount;
+                ++this.score;
+                this.spawnIngredient();
+            }
+
+            handlePeekDeactivation() {
+                if (this.peekActivated) {
+                    this.peekActivated = false;
+                    this.updatePeekButton();
+                }
+            }
+
+            // handleNewPieceAvailability(initialScore, row, col) {
+            //     const newPieceAvailable = this.checkPieceAvailability(initialScore, this.score);
+            //     if (newPieceAvailable) {
+            //         this.popUpTexts.push(new PopUpText(`${newPieceAvailable} Available`, [col * SQUARE_SIZE, row * SQUARE_SIZE], [0, 255, 0], 40));
+            //     }
+            // }
+
+            checkEmergencyMove() {
+                if (!this.hasSafeMoves() && !this.emergencyMove) {
+                    this.emergencyMove = true;
+                    this.emergencyTurnsUsed++;
+                    console.log('Emergency move activated! Player can move again.');
+                    return true;
+                }
+                if (this.emergencyMove) {
+                    this.emergencyMove = false;
+                    return true;
+                }
+
+                return false;
+            }
+
+            processEnemyMoves() {
+                return this.moveEnemies();
+            }
+
+            handleEnemySpawning() {
+                if (this.turnCount >= 2) {
+                    this.spawnEnemy();
+                    console.log("\nAfter spawning enemy:");
+                    this.printBoardState();
+                }
+            }
+
+            updateUI(initialScore) {
+                this.lastMoveScoreGain = this.score - initialScore;
+                this.updatePieceButtons();
+                updateGameInfo(this);
+            }
+
+
+            resetPieceChange() {
+                this.lastPieceChange = null;
+            }
+
+            saveState() {
+                this.previousState = {
+                    board: this.board.map(row => [...row]),
+                    selectedPos: [...this.selectedPos],
+                    enemies: this.enemies.map(enemy => [...enemy]),
+                    turnCount: this.turnCount,
+                    score: this.score,
+                    emergencyMove: this.emergencyMove,
+                    playerPieceType: this.playerPiece.pieceType
+                };
+                this.canUndo = true;
+                this.lastMoveScoreGain = 0;
+            }
+
+            undoMove() {
+                if (!this.canUndo) {
+                    console.log('Cannot undo. No previous state available.');
+                    return false;
+                }
+
+                this.board = this.previousState.board;
+                this.selectedPos = this.previousState.selectedPos;
+                this.enemies = this.previousState.enemies;
+                this.turnCount = this.previousState.turnCount;
+                this.emergencyMove = this.previousState.emergencyMove;
+
+                this.playerPiece = new Piece('w', this.previousState.playerPieceType);
+                this.board[this.selectedPos[0]][this.selectedPos[1]] = this.playerPiece;
+
+                this.score = this.previousState.score - this.lastMoveScoreGain;
+
+                this.canUndo = false;
+                // this.updatePieceButtons();
+                console.log(`Move undone. Reverted to ${this.playerPiece.pieceType} and adjusted score.`);
+                return true;
+            }
+
+            isMoveSafe(startPos, endPos, depth = 0) {
+                if (depth > 2) {
+                    return true;
+                }
+
+                const piece = this.board[startPos[0]][startPos[1]];
+                const originalEndPiece = this.board[endPos[0]][endPos[1]];
+                this.board[endPos[0]][endPos[1]] = piece;
+                this.board[startPos[0]][startPos[1]] = null;
+                const originalSelectedPos = [...this.selectedPos];
+                this.selectedPos = endPos;
+
+                let isSafe = true;
+                for (const enemy of this.enemies) {
+                    const [row, col] = enemy;
+                    const enemyPiece = this.board[row][col];
+                    if (enemyPiece && (row !== endPos[0] || col !== endPos[1])) {
+                        const validMoves = this.getValidMoves(row, col, depth + 1);
+                        if (validMoves.some(move => move[0] === endPos[0] && move[1] === endPos[1])) {
+                            isSafe = false;
+                            break;
+                        }
+                    }
+                }
+
+                this.board[startPos[0]][startPos[1]] = piece;
+                this.board[endPos[0]][endPos[1]] = originalEndPiece;
+                this.selectedPos = originalSelectedPos;
+
+                return isSafe;
+            }
+
+            hasSafeMoves() {
+                for (const pieceType of ['K', 'N', 'B', 'R', 'Q']) {
+                    const originalPiece = this.playerPiece;
+                    this.playerPiece = new Piece('w', pieceType);
+                    const validMoves = this.getValidMoves(...this.selectedPos);
+                    if (validMoves.some(move => this.isMoveSafe(this.selectedPos, move))) {
+                        this.playerPiece = originalPiece;
+                        return true;
+                    }
+                    this.playerPiece = originalPiece;
+                }
+                return false;
+            }
+
+            isPositionProtected(position, attackingColor) {
+                for (let row = 0; row < ROWS; row++) {
+                    for (let col = 0; col < COLS; col++) {
+                        const piece = this.board[row][col];
+                        if (piece && piece.color === attackingColor) {
+                            const validMoves = this.getValidMoves(row, col);
+                            if (validMoves.some(move => move[0] === position[0] && move[1] === position[1])) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+                return false;
+            }
+
+            resetHighlights() {
+                this.lastSpawned = null;
+                this.lastMovedEnemyFrom = null;
+                this.lastMovedEnemyTo = null;
+            }
+
+            draw(win) {
+                this.drawPieces(win);
+                this.drawIngredients(win);
+                this.highlightLastSpawned(win);
+                this.highlightLastMovedEnemy(win);
+                this.highlightPlayer(win);
+                if (this.showDots) {
+                    this.drawValidMoves(win);
+                }
+            }
+
+            drawPieces(ctx) {
+                for (let row = 0; row < ROWS; row++) {
+                    for (let col = 0; col < COLS; col++) {
+                        const piece = this.board[row][col];
+                        if (!piece) {
+                            continue;
+                        }
+                        const isWhiteSquare = this.isWhiteSquare(row, col);
+                        if (piece.color === 'w' || isWhiteSquare || (piece.color === 'b' && !isWhiteSquare && this.peekActivated)) {
+                            piece.draw(ctx, row, col);
+                        }
+                    }
+                }
+            }
+
+
+            drawIngredients(win) {
+                this.ingredients.forEach(ing => {
+                    const x = (ing.col + 0.5) * SQUARE_SIZE;
+                    const y = (ing.row + 0.5) * SQUARE_SIZE;
+
+                    win.fillStyle = 'green';
+                    win.beginPath();
+                    win.arc(x, y, SQUARE_SIZE / 4, 0, 2 * Math.PI);
+                    win.fill();
+
+                    win.fillStyle = 'white';
+                    win.font = `${SQUARE_SIZE / 2}px Arial`;
+                    win.textAlign = 'center';
+                    win.textBaseline = 'middle';
+                    win.fillText('?', x, y);
+                });
+            }
+
+            highlightLastSpawned(win) {
+                if (this.lastSpawned) {
+                    const [row, col] = this.lastSpawned;
+                    win.strokeStyle = 'red';
+                    win.lineWidth = 3;
+                    win.strokeRect(col * SQUARE_SIZE, row * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE);
+                }
+            }
+
+            highlightLastMovedEnemy(win) {
+                if (this.lastMovedEnemyFrom) {
+                    const [row, col] = this.lastMovedEnemyFrom;
+                    win.strokeStyle = 'orange';
+                    win.lineWidth = 3;
+                    win.strokeRect(col * SQUARE_SIZE, row * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE);
+                }
+                if (this.lastMovedEnemyTo) {
+                    const [row, col] = this.lastMovedEnemyTo;
+                    win.strokeStyle = 'orange';
+                    win.lineWidth = 5;
+                    win.strokeRect(col * SQUARE_SIZE, row * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE);
+                }
+            }
+
+            highlightPlayer(win) {
+                const playerColor = this.emergencyMove ? 'green' : 'blue';
+                win.strokeStyle = playerColor;
+                win.lineWidth = 5;
+                win.strokeRect(this.selectedPos[1] * SQUARE_SIZE, this.selectedPos[0] * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE);
+            }
+
+            drawValidMoves(win) {
+                const validMoves = this.getValidMoves(...this.selectedPos);
+                for (const move of validMoves) {
+                    const [row, col] = move;
+                    win.beginPath();
+                    if (this.isMoveSafe(this.selectedPos, move)) {
+                        win.fillStyle = 'blue';
+                        win.arc((col + 0.5) * SQUARE_SIZE, (row + 0.5) * SQUARE_SIZE, SQUARE_SIZE / 8, 0, 2 * Math.PI);
+                    } else {
+                        win.fillStyle = 'red';
+                        win.arc((col + 0.5) * SQUARE_SIZE, (row + 0.5) * SQUARE_SIZE, SQUARE_SIZE / 16, 0, 2 * Math.PI);
+                    }
+                    win.fill();
+                }
+            }
+
+            togglePeek() {
+                if (this.score >= this.peekCost || this.peekActivated) {
+                    if (!this.peekActivated) {
+                        this.score -= this.peekCost;
+                    }
+                    this.peekActivated = !this.peekActivated;
+                    console.log(`Peek ${this.peekActivated ? 'activated' : 'deactivated'}`);
+                    this.updatePeekButton();
+                } else {
+                    console.log(`Not enough points to peek. Current score: ${this.score}, Required: ${this.peekCost}`);
+                }
+            }
+
+            updatePeekButton() {
+                const button = document.getElementById('peekButton');
+                if (button) {
+                    button.textContent = this.peekActivated ? 'Peek Active' : 'Peek (5)';
+                    button.disabled = !this.peekActivated && this.score < this.peekCost;
+                }
+            }
+
+            drawEnemyMoves(win) {
+                if (this.showDots) {
+                    win.fillStyle = 'red';
+                    for (const enemy of this.enemies) {
+                        const [row, col] = enemy;
+                        const validMoves = this.getValidMoves(row, col);
+                        for (const move of validMoves) {
+                            const [moveRow, moveCol] = move;
+                            win.beginPath();
+                            win.arc((moveCol + 0.5) * SQUARE_SIZE, (moveRow + 0.5) * SQUARE_SIZE, SQUARE_SIZE / 8, 0, 2 * Math.PI);
+                            win.fill();
+                        }
+                    }
+                }
+            }
+
+            toggleDots() {
+                this.showDots = !this.showDots;
+                console.log(`Dots are now ${this.showDots ? 'on' : 'off'}`);
+            }
+
+            moveEnemies() {
+                this.spawnIngredient();
+                if (this.enemies.length === 0) {
+                    return true;
+                }
+
+                this.filterEnemies();
+                if (this.checkForPlayerCapture()) {
+                    return false;
+                }
+
+                this.updateAttackingForce();
+                this.moveAttackingEnemy();
+
+                return true;
+            }
+
+            filterEnemies() {
+                this.enemies = this.enemies.filter(enemy => this.board[enemy[0]][enemy[1]] !== null);
+            }
+
+            checkForPlayerCapture() {
+                for (const enemy of this.enemies) {
+                    if (this.isPlayerCaptured(enemy)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            isPlayerCaptured(enemy) {
+                const [row, col] = enemy;
+                const piece = this.board[row][col];
+                if (piece && !piece.justSpawned) {
+                    const validMoves = this.getValidMoves(row, col);
+                    if (validMoves.some(move => move[0] === this.selectedPos[0] && move[1] === this.selectedPos[1])) {
+                        this.board[row][col] = null;
+                        this.board[this.selectedPos[0]][this.selectedPos[1]] = piece;
+                        console.log('Game over: Player captured by enemy');
+                        // Game over, player is captured
+                        gameOver(piece.pieceType, [row, col]);
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            moveAttackingEnemy() {
+                if (this.attackingForce.length > 0) {
+                    const enemy = this.chooseEnemyToMove();
+                    if (enemy) {
+                        this.executeEnemyMove(enemy);
+                    }
+                }
+            }
+
+            executeEnemyMove(enemy) {
+                const [row, col] = enemy;
+                const piece = this.board[row][col];
+                const validMoves = this.getValidMoves(row, col);
+
+                if (validMoves.length > 0) {
+                    const newPos = this.getStrategicMove(piece, [row, col], validMoves, enemy === this.mainAttacker);
+                    if (newPos) {
+                        this.moveEnemyPiece(enemy, newPos);
+                    }
+                }
+            }
+
+            chooseEnemyToMove() {
+                if (this.mainAttacker && Math.random() < 0.7 && this.attackingForce.some(e => e[0] === this.mainAttacker[0] && e[1] === this.mainAttacker[1])) {
+                    return this.mainAttacker;
+                }
+                return this.attackingForce[Math.floor(Math.random() * this.attackingForce.length)];
+            }
+
+            moveEnemyPiece(from, to) {
+                this.lastMovedEnemyFrom = from;
+                this.lastMovedEnemyTo = to;
+                const piece = this.board[from[0]][from[1]];
+                this.board[from[0]][from[1]] = null;
+                this.board[to[0]][to[1]] = piece;
+                this.enemies[this.enemies.findIndex(e => e[0] === from[0] && e[1] === from[1])] = to;
+                if (from === this.mainAttacker) {
+                    this.mainAttacker = to;
+                }
+                console.log(`Moved ${piece.color}${piece.pieceType} from ${from} to ${to}`);
+            }
+
+            updateAttackingForce() {
+                this.attackingForce = [];
+
+                const sortedEnemies = [...this.enemies].sort((a, b) => {
+                    const pieceA = this.board[a[0]][a[1]];
+                    const pieceB = this.board[b[0]][b[1]];
+                    const valueA = this.getPieceValue(pieceA.pieceType);
+                    const valueB = this.getPieceValue(pieceB.pieceType);
+                    const distA = (a[0] - this.selectedPos[0])**2 + (a[1] - this.selectedPos[1])**2;
+                    const distB = (b[0] - this.selectedPos[0])**2 + (b[1] - this.selectedPos[1])**2;
+                    return (valueB - valueA) || (distA - distB);
+                });
+
+                for (const enemy of sortedEnemies.slice(0, 4)) {
+                    const [row, col] = enemy;
+                    const piece = this.board[row][col];
+                    if (piece && !piece.justSpawned) {
+                        this.attackingForce.push(enemy);
+                    }
+                }
+
+                while (this.attackingForce.length < 3 && this.attackingForce.length < this.enemies.length) {
+                    const remainingEnemies = this.enemies.filter(e => !this.attackingForce.some(a => a[0] === e[0] && a[1] === e[1]));
+                    if (remainingEnemies.length === 0) {
+                        break;
+                    }
+                    this.attackingForce.push(remainingEnemies[Math.floor(Math.random() * remainingEnemies.length)]);
+                }
+
+                if (this.attackingForce.length > 0) {
+                    this.mainAttacker = this.attackingForce.reduce((closest, current) => {
+                        const closestDist = (closest[0] - this.selectedPos[0])**2 + (closest[1] - this.selectedPos[1])**2;
+                        const currentDist = (current[0] - this.selectedPos[0])**2 + (current[1] - this.selectedPos[1])**2;
+                        return currentDist < closestDist ? current : closest;
+                    });
+                } else {
+                    this.mainAttacker = null;
+                }
+
+                console.log(`Updated attacking force: ${this.attackingForce}`);
+                console.log(`Main attacker: ${this.mainAttacker}`);
+            }
+
+            getPieceValue(pieceType) {
+                const values = {'Q': 9, 'R': 5, 'B': 3, 'N': 3, 'p': 1};
+                return values[pieceType] || 0;
+            }
+
+            getStrategicMove(piece, currentPos, validMoves, isMainAttacker) {
+                if (isMainAttacker) {
+                    return this.mainAttackerStrategy(piece.pieceType, currentPos, validMoves);
+                }
+                return this.supportStrategy(piece.pieceType, currentPos, validMoves);
+            }
+
+            mainAttackerStrategy(_pieceType, currentPos, validMoves) {
+                const aggressiveMoves = validMoves.filter(move => this.isAggressiveMove(currentPos, move));
+                const protectedAggressiveMoves = aggressiveMoves.filter(move => this.isPositionProtected(move, 'b'));
+
+                if (protectedAggressiveMoves.length > 0) {
+                    return protectedAggressiveMoves[Math.floor(Math.random() * protectedAggressiveMoves.length)];
+                }
+                if (aggressiveMoves.length > 0) {
+                    return aggressiveMoves[Math.floor(Math.random() * aggressiveMoves.length)];
+                }
+                return this.closingInStrategy(currentPos, validMoves, this.selectedPos);
+            }
+
+            supportStrategy(_pieceType, currentPos, validMoves) {
+                const keySquares = this.getKeySquares();
+                const controllingMoves = validMoves.filter(move => keySquares.some(ks => ks[0] === move[0] && ks[1] === move[1]));
+
+                if (controllingMoves.length > 0) {
+                    return controllingMoves[Math.floor(Math.random() * controllingMoves.length)];
+                }
+                return this.closingInStrategy(currentPos, validMoves, this.mainAttacker);
+            }
+
+            isAggressiveMove(currentPos, newPos) {
+                const currentDistance = Math.sqrt((currentPos[0] - this.selectedPos[0])**2 + (currentPos[1] - this.selectedPos[1])**2);
+                const newDistance = Math.sqrt((newPos[0] - this.selectedPos[0])**2 + (newPos[1] - this.selectedPos[1])**2);
+                return newDistance < currentDistance;
+            }
+
+            getKeySquares() {
+                const keySquares = new Set();
+
+                this.addSquaresAroundPosition(keySquares, this.selectedPos, 2);
+
+                if (this.mainAttacker) {
+                    this.addSquaresAroundPosition(keySquares, this.mainAttacker, 1);
+                }
+
+                return Array.from(keySquares);
+            }
+
+            addSquaresAroundPosition(keySquares, position, range) {
+                const [baseRow, baseCol] = position;
+                for (let i = -range; i <= range; i++) {
+                    for (let j = -range; j <= range; j++) {
+                        const row = baseRow + i;
+                        const col = baseCol + j;
+                        if (this.isWithinBounds(row, col)) {
+                            keySquares.add([row, col]);
+                        }
+                    }
+                }
+            }
+
+            isWithinBounds(row, col) {
+                return 0 <= row && row < ROWS && 0 <= col && col < COLS;
+            }
+
+            closingInStrategy(currentPos, validMoves, target) {
+                const dx = target[0] - currentPos[0];
+                const dy = target[1] - currentPos[1];
+
+                const preferredMoves = validMoves.filter(move =>
+                    (dx > 0 && move[0] > currentPos[0] || dx < 0 && move[0] < currentPos[0]) &&
+                    (dy > 0 && move[1] > currentPos[1] || dy < 0 && move[1] < currentPos[1])
+                );
+
+                if (preferredMoves.length > 0) {
+                    return preferredMoves[Math.floor(Math.random() * preferredMoves.length)];
+                }
+                return validMoves.reduce((closest, move) => {
+                    const closestDist = (closest[0] - target[0])**2 + (closest[1] - target[1])**2;
+                    const currentDist = (move[0] - target[0])**2 + (move[1] - target[1])**2;
+                    return currentDist < closestDist ? move : closest;
+                });
+            }
+
+            spawnEnemy() {
+                if (this.turnCount < 2) {
+                    return;
+                }
+
+                console.log(`\nAttempting to spawn enemy on turn ${this.turnCount}`);
+                const pieceTypes = ['p', 'Q', 'B', 'N', 'R'];
+                const probabilities = [0.8, 0.2, 0.6, 0.6, 0.4];
+                const spawnLocations = [];
+
+                for (let row = 0; row < ROWS; row++) {
+                    for (let col = 0; col < COLS; col++) {
+                        if ((row === 0 || row === ROWS-1 || col === 0 || col === COLS-1) && this.isWhiteSquare(row, col)) {
+                            spawnLocations.push([row, col]);
+                        }
+                    }
+                }
+
+                spawnLocations.sort((a, b) => {
+                    const distA = (a[0] - this.selectedPos[0])**2 + (a[1] - this.selectedPos[1])**2;
+                    const distB = (b[0] - this.selectedPos[0])**2 + (b[1] - this.selectedPos[1])**2;
+                    return distB - distA;
+                });
+
+                const spawnLocation = spawnLocations.find(([row, col]) => this.board[row][col] === null);
+
+                if (!spawnLocation) {
+                    console.log('No free white square to spawn');
+                    return;
+                }
+
+                const pieceType = this.chooseWeighted(pieceTypes, probabilities);
+
+                let pawnDirection = null;
+                if (pieceType === 'p') {
+                    pawnDirection = spawnLocation[0] < ROWS / 2 ? 1 : -1;
+                }
+
+                const newPiece = new Piece('b', pieceType, pawnDirection);
+                newPiece.justSpawned = true;
+                this.board[spawnLocation[0]][spawnLocation[1]] = newPiece;
+                this.enemies.push(spawnLocation);
+
+                this.lastSpawned = spawnLocation;
+
+                console.log(`Spawned ${pieceType} at ${spawnLocation}`);
+            }
+
+            chooseWeighted(items, weights) {
+                const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+                const randomNum = Math.random() * totalWeight;
+                let weightSum = 0;
+
+                for (let i = 0; i < items.length; i++) {
+                    weightSum += weights[i];
+                    if (randomNum <= weightSum) {
+                        return items[i];
+                    }
+                }
+
+                return items[items.length - 1];
+            }
+
+            getValidMoves(row, col) {
+                const piece = this.board[row][col];
+                if (!piece) return [];
+
+                //console.log(`Getting valid moves for ${piece.color}${piece.pieceType} at [${row}, ${col}]`);
+                let possibleMoves = piece.getPossibleMoves(row, col);
+                //console.log(`Possible moves: ${JSON.stringify(possibleMoves)}`);
+                return possibleMoves.filter(([r, c]) => {
+                    if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return false;
+                    const targetPiece = this.board[r][c];
+                    if (targetPiece && targetPiece.color === piece.color) return false;
+                    if (['Q', 'R', 'B'].includes(piece.pieceType)) {
+                        return this.isPathClear([row, col], [r, c]);
+                    }
+                    return true;
+                });
+            }
+
+            getRookMoves(row, col) {
+                const moves = [];
+                for (let i = 0; i < ROWS; i++) {
+                    if (i !== row) moves.push([i, col]);
+                }
+                for (let j = 0; j < COLS; j++) {
+                    if (j !== col) moves.push([row, j]);
+                }
+                return moves;
+            }
+
+            getBishopMoves(row, col) {
+                const moves = [];
+                for (let i = 1; i < ROWS; i++) {
+                    if (row + i < ROWS && col + i < COLS) moves.push([row + i, col + i]);
+                    if (row + i < ROWS && col - i >= 0) moves.push([row + i, col - i]);
+                    if (row - i >= 0 && col + i < COLS) moves.push([row - i, col + i]);
+                    if (row - i >= 0 && col - i >= 0) moves.push([row - i, col - i]);
+                }
+                return moves;
+            }
+
+            isPathClear(start, end) {
+                const [startRow, startCol] = start;
+                const [endRow, endCol] = end;
+                const rowStep = Math.sign(endRow - startRow);
+                const colStep = Math.sign(endCol - startCol);
+                let currentRow = startRow + rowStep;
+                let currentCol = startCol + colStep;
+
+                while (currentRow !== endRow || currentCol !== endCol) {
+                    if (this.board[currentRow][currentCol] !== null) return false;
+                    currentRow += rowStep;
+                    currentCol += colStep;
+                }
+                return true;
+            }
+
+            printBoardState() {
+                if (this.lastPrintedTurn === this.turnCount) {
+                    return; // Skip if already printed this turn
+                }
+                this.lastPrintedTurn = this.turnCount;
+
+                console.log("\n==================== Current Board State ====================");
+                console.log(`Turn: ${this.turnCount}`);
+                
+                const boardState = [];
+                for (let row = 0; row < ROWS; row++) {
+                    const rowState = {};
+                    for (let col = 0; col < COLS; col++) {
+                        const piece = this.board[row][col];
+                        if (piece) {
+                            rowState[col] = `${piece.color}${piece.pieceType}`;
+                        } else {
+                            rowState[col] = '  ';
+                        }
+                    }
+                    boardState.push(rowState);
+                }
+
+                console.table(boardState);
+
+                console.log("Player Position:", this.selectedPos);
+                console.log("Enemies:", this.enemies.map(e => `[${e[0]},${e[1]}]`).join(', '));
+                console.log("Ingredients:", this.ingredients.map(i => `[${i.row},${i.col}]`).join(', '));
+                console.log("Unlocked Potions:", Array.from(this.unlockedPotions).join(', '));
+                console.log("=============================================================\n");
+            }
+
+            updatePopUps() {
+                this.popUpTexts.forEach(text => text.update());
+                this.popUpTexts = this.popUpTexts.filter(text => !text.isExpired());
+            }
+
+            drawPopUps(ctx) {
+                this.popUpTexts.forEach(text => text.draw(ctx));
+            }
+        }
+
+        class PopUpText {
+            constructor(text, position, color = [255, 255, 255], offset = 0) {
+                this.text = text;
+                this.position = [position[0], position[1] - offset];
+                this.color = color;
+                this.lifetime = 90;
+                this.font = '28px Arial';
+                this.offset = offset;
+            }
+
+            update() {
+                this.lifetime -= 1;
+                this.position[1] -= 0.5;
+            }
+
+            draw(ctx) {
+                ctx.font = this.font;
+                ctx.fillStyle = `rgb(${this.color[0]}, ${this.color[1]}, ${this.color[2]})`;
+                ctx.textAlign = 'center';
+                ctx.fillText(this.text, this.position[0] + SQUARE_SIZE/2, this.position[1]);
+            }
+
+            isExpired() {
+                return this.lifetime <= 0;
+            }
+        }
+
+        function getRowColFromMouse(pos) {
+            const [x, y] = pos;
+            const row = Math.floor(y / SQUARE_SIZE);
+            const col = Math.floor(x / SQUARE_SIZE);
+            return [row, col];
+        }
+
+        function drawBoard(ctx) {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, GAME_SIZE, GAME_SIZE);
+            for (let row = 0; row < ROWS; row++) {
+                for (let col = 0; col < COLS; col++) {
+                    ctx.fillStyle = ((row + col) % 2 === 0) ? 'white' : 'black';
+                    ctx.fillRect(col * SQUARE_SIZE, row * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE);
+                }
+            }
+        }
+
+        async function loadImages() {
+            const pieces = ['wK', 'wQ', 'wR', 'wB', 'wN', 'wp', 'bK', 'bQ', 'bR', 'bB', 'bN', 'bp'];
+            for (const piece of pieces) {
+                try {
+                    const img = new Image();
+                    img.src = `images/${piece}.png`;
+                    await new Promise((resolve, reject) => {
+                        img.onload = resolve;
+                        img.onerror = reject;
+                    });
+                    IMAGES[piece] = img;
+                } catch (e) {
+                    console.error(`Could not load image for ${piece}: ${e}`);
+                    // Create a placeholder colored rectangle
+                    const canvas = document.createElement('canvas');
+                    canvas.width = SQUARE_SIZE;
+                    canvas.height = SQUARE_SIZE;
+                    //const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = piece[0] === 'w' ? 'white' : 'black';
+                    ctx.fillRect(0, 0, SQUARE_SIZE, SQUARE_SIZE);
+                    ctx.font = `${SQUARE_SIZE/2}px Arial`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(piece[1], SQUARE_SIZE/2, SQUARE_SIZE/2);
+                    IMAGES[piece] = canvas;
+                }
+            }
+        }
+
+        function resizeCanvas() {
+            const containerWidth = window.innerWidth;
+            const containerHeight = window.innerHeight;
+            const headerHeight = document.getElementById('header').offsetHeight;
+            const footerHeight = document.getElementById('footer').offsetHeight;
+            const availableHeight = containerHeight - headerHeight - footerHeight;
+            // Use 95% of available space
+            GAME_SIZE = Math.min(containerWidth, availableHeight) * 0.95;
+            canvas.width = GAME_SIZE;
+            canvas.height = GAME_SIZE;
+            SQUARE_SIZE = GAME_SIZE / COLS;
+            //console.log(`Canvas size: ${GAME_SIZE}x${GAME_SIZE}, SQUARE_SIZE: ${SQUARE_SIZE}`);
+        }
+
+        function updateGameInfo(chessBoard) {
+            if (!chessBoard) {
+                if (!this) {
+                    return;
+                }
+                chessBoard = this;
+            }
+            document.getElementById('scoreText').textContent = `Score: ${chessBoard.score}`;
+            document.getElementById('pieceText').textContent = `Current Piece: ${chessBoard.playerPiece.pieceType}`;
+            document.getElementById('turnText').textContent = `Turns: ${chessBoard.turnCount}`;
+            document.getElementById('ingredientText').textContent = `Ingredients: ${chessBoard.ingredientsCollected}`;
+            chessBoard.updatePeekButton();
+            chessBoard.updatePotionUI();
+        }
+
+        function handleBoardClick(event) {
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            makeMove(x, y);
+        }
+
+        function handleBoardTouch(event) {
+            event.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const touch = event.touches[0];
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+            makeMove(x, y);
+        }
+
+        function makeMove(x, y) {
+            const [row, col] = getRowColFromMouse([x, y]);
+            if (gameState.chessBoard) {
+                const gameContinues = gameState.chessBoard.movePlayer(row, col);
+                if (!gameContinues) {
+                    console.log('Game Over!');
+                    gameOver();
+                }
+            } else {
+                console.error("Chess board isn't initialized");
+            }
+        }
+
+        function gameOver(killerPiece, killerLocation) {
+            const gameOverDiv = document.createElement('div');
+            gameOverDiv.id = 'gameOver';
+            gameOverDiv.classList.add('game-over');
+            
+            const stats = gameState.chessBoard.getGameStats();
+            const subheading = getGameOverSubheading(gameState.chessBoard.score, killerPiece, killerLocation);
+            
+            gameOverDiv.innerHTML = `
+                <h2>Game Over</h2>
+                <p class="game-over-subheading">${subheading}</p>
+                <p>Your score: ${gameState.chessBoard.score}</p>
+                <p>Turns survived: ${gameState.chessBoard.turnCount}</p>
+                <p>Ingredients collected: ${stats.ingredientsCollected}</p>
+                <p>Potions used: ${stats.potionsUsed}</p>
+                <p>Emergency turns used: ${stats.emergencyTurnsUsed}</p>
+                <p>Pieces captured: ${stats.piecesCaptured}</p>
+                <button onclick="restartGame()">Play Again</button>
+            `;
+            document.body.appendChild(gameOverDiv);
+
+            // Trigger peek effect to show black pieces and unsafe squares
+            gameState.chessBoard.togglePeek();
+
+            // Trigger hint effect to show possible moves
+            gameState.chessBoard.toggleDots();
+
+            // Render the final state of the board
+            drawBoard(ctx);
+            gameState.chessBoard.draw(ctx);
+            gameState.chessBoard.drawEnemyMoves(ctx);
+        }
+
+        function getGameOverSubheading(score, killerPiece, killerLocation) {
+            const pieceNames = {
+                'p': 'Pawn',
+                'R': 'Rook',
+                'N': 'Knight',
+                'B': 'Bishop',
+                'Q': 'Queen',
+                'K': 'King'
+            };
+
+            const pieceName = pieceNames[killerPiece] || 'Unknown piece';
+            const chessCoordinates = indexToChessCoordinate(killerLocation[0], killerLocation[1]);
+
+            if (score >= 50) {
+                const phrases = [
+                    `You were finally taken down by a ${pieceName} from ${chessCoordinates}.`,
+                    `After a valiant effort, a ${pieceName} at ${chessCoordinates} ended your run.`,
+                    `Your impressive journey was halted by a ${pieceName} from ${chessCoordinates}.`
+                ];
+                return phrases[Math.floor(Math.random() * phrases.length)];
+            } else if (score >= 25) {
+                const phrases = [
+                    `A ${pieceName} from ${chessCoordinates} brought your game to an end.`,
+                    `Your chess adventure was cut short by a ${pieceName} at ${chessCoordinates}.`,
+                    `A strategic move by a ${pieceName} from ${chessCoordinates} sealed your fate.`
+                ];
+                return phrases[Math.floor(Math.random() * phrases.length)];
+            } else if (score >= 10) {
+                const phrases = [
+                    `You were outmaneuvered by a ${pieceName} from ${chessCoordinates}.`,
+                    `A ${pieceName} at ${chessCoordinates} proved to be your undoing.`,
+                    `Your chess skills were no match for the ${pieceName} at ${chessCoordinates}.`
+                ];
+                return phrases[Math.floor(Math.random() * phrases.length)];
+            } else {
+                const phrases = [
+                    `You were swiftly defeated by a ${pieceName} from ${chessCoordinates}.`,
+                    `A ${pieceName} at ${chessCoordinates} made quick work of your defenses.`,
+                    `Your brief reign was ended by a ${pieceName} from ${chessCoordinates}.`
+                ];
+                return phrases[Math.floor(Math.random() * phrases.length)];
+            }
+        }
+
+        function indexToChessCoordinate(row, col) {
+            const files = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+            const rank = 8 - row;  // Chess boards are numbered from bottom to top
+            const file = files[col];
+            return `${file}${rank}`;
+        }
+
+        function restartGame() {
+            document.body.removeChild(document.getElementById('gameOver'));
+            gameState.chessBoard = new Board();
+            updateGameInfo(gameState.chessBoard);
+        }
+
+        async function main() {
+            canvas = document.getElementById('gameCanvas');
+            ctx = canvas.getContext('2d');
+
+            await loadImages();
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            gameState.chessBoard = new Board();
+
+            document.getElementById('undoButton').addEventListener('click', () => {
+                if (gameState.chessBoard) {
+                    gameState.chessBoard.undoMove();
+                }
+            });
+
+            document.getElementById('toggleDotsButton').addEventListener('click', () => {
+                if (gameState.chessBoard) {
+                    gameState.chessBoard.toggleDots();
+                }
+            });
+
+            document.getElementById('peekButton').addEventListener('click', () => {
+                if (gameState.chessBoard) {
+                    gameState.chessBoard.togglePeek();
+                    updateGameInfo(gameState.chessBoard);
+                }
+            });
+
+            document.getElementById('useRookPotion').addEventListener('click', () => gameState.chessBoard.usePotion('Rook'));
+            document.getElementById('useBishopPotion').addEventListener('click', () => gameState.chessBoard.usePotion('Bishop'));
+            document.getElementById('useKnightPotion').addEventListener('click', () => gameState.chessBoard.usePotion('Knight'));
+            document.getElementById('useQueenPotion').addEventListener('click', () => gameState.chessBoard.usePotion('Queen'));
+
+            canvas.addEventListener('click', handleBoardClick);
+            canvas.addEventListener('touchstart', handleBoardTouch);
+
+            const pieceButtons = document.querySelectorAll('.pieceButton');
+            pieceButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    if (gameState.chessBoard) {
+                        const pieceType = button.getAttribute('data-piece');
+                        gameState.chessBoard.changePlayerPiece(pieceType);
+                    }
+                });
+            });
+
+            gameLoop();
+        }
+
+        function gameLoop() {
+            if (canvas.width !== GAME_SIZE || canvas.height !== GAME_SIZE) {
+                resizeCanvas();
+            }
+            drawBoard(ctx);
+            if (gameState.chessBoard) {
+                gameState.chessBoard.spawnIngredient();
+                gameState.chessBoard.draw(ctx);
+                gameState.chessBoard.drawEnemyMoves(ctx);
+                gameState.chessBoard.updatePopUps();
+                gameState.chessBoard.drawPopUps(ctx);
+            }
+            updateGameInfo(gameState.chessBoard);
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Call main function when the DOM is fully loaded
+        document.addEventListener('DOMContentLoaded', main);
+    </script>
+</body>
+</html>
